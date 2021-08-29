@@ -23,6 +23,8 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "fifo.h"
+#include "usbd_cdc_if.h"
 
 /* USER CODE END Includes */
 
@@ -95,7 +97,7 @@ int main(void)
   MX_SPI2_Init();
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
-  HAL_GPIO_WritePin(USB_PU_GPIO_Port, USB_PU_Pin, 1); // we have initialized usb, pull it up!
+  HAL_GPIO_WritePin(USB_PU_GPIO_Port, USB_PU_Pin, 1); // we have initialized USB, pull it up!
 
   /* USER CODE END 2 */
 
@@ -104,6 +106,11 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
+	  while (!fifo_is_empty())
+	  {
+		  uint8_t buf = fifo_pop();
+		  CDC_Transmit_FS(&buf, 1);
+	  }
 
     /* USER CODE BEGIN 3 */
   }
