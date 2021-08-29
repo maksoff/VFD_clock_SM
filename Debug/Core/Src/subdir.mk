@@ -5,31 +5,43 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Core/Src/d3231.c \
 ../Core/Src/fifo.c \
 ../Core/Src/main.c \
+../Core/Src/microrl.c \
+../Core/Src/microrl_cmd.c \
 ../Core/Src/stm32f1xx_hal_msp.c \
 ../Core/Src/stm32f1xx_it.c \
 ../Core/Src/syscalls.c \
 ../Core/Src/sysmem.c \
-../Core/Src/system_stm32f1xx.c 
+../Core/Src/system_stm32f1xx.c \
+../Core/Src/vfd.c 
 
 OBJS += \
+./Core/Src/d3231.o \
 ./Core/Src/fifo.o \
 ./Core/Src/main.o \
+./Core/Src/microrl.o \
+./Core/Src/microrl_cmd.o \
 ./Core/Src/stm32f1xx_hal_msp.o \
 ./Core/Src/stm32f1xx_it.o \
 ./Core/Src/syscalls.o \
 ./Core/Src/sysmem.o \
-./Core/Src/system_stm32f1xx.o 
+./Core/Src/system_stm32f1xx.o \
+./Core/Src/vfd.o 
 
 C_DEPS += \
+./Core/Src/d3231.d \
 ./Core/Src/fifo.d \
 ./Core/Src/main.d \
+./Core/Src/microrl.d \
+./Core/Src/microrl_cmd.d \
 ./Core/Src/stm32f1xx_hal_msp.d \
 ./Core/Src/stm32f1xx_it.d \
 ./Core/Src/syscalls.d \
 ./Core/Src/sysmem.d \
-./Core/Src/system_stm32f1xx.d 
+./Core/Src/system_stm32f1xx.d \
+./Core/Src/vfd.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

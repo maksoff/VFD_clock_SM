@@ -25,6 +25,9 @@
 /* USER CODE BEGIN Includes */
 #include "fifo.h"
 #include "usbd_cdc_if.h"
+#include "microrl_cmd.h"
+#include "vfd.h"
+#include "d3231.h"
 
 /* USER CODE END Includes */
 
@@ -49,6 +52,8 @@ SPI_HandleTypeDef hspi2;
 
 /* USER CODE BEGIN PV */
 
+uint8_t brightness;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -62,6 +67,299 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+void vfd_update(void) {
+			uint8_t data = 0b11000000; // command 3, set address to 0
+			HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+			HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+			HAL_SPI_Transmit(&hspi2, vfd.arr1, sizeof(vfd.arr1), 0xffffffff);
+			HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+		}
+
+void do_microrl(void)
+{
+	while (!fifo_is_empty())
+	{
+	  uint8_t buf = fifo_pop();
+	  microrl_print_char(buf);
+	}
+}
+
+void do_vfd_init(void)
+{
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1); // put CS high
+
+		HAL_Delay(300);
+		HAL_GPIO_WritePin(HV_EN_GPIO_Port, HV_EN_Pin, 1);
+
+		for (int i = 0; i < sizeof(vfd.arr1); i++) {
+			vfd.arr1[i] = 0xFF;
+		}
+		uint8_t data;
+
+		data = 0b01000001; // command 2, write to LED port
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+		HAL_Delay(10);
+
+		data = 0b1111; // disable LEDs
+
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+
+		data = 0b01000000; // command 2, write to Display port
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+		HAL_Delay(10);
+		vfd_update();
+		HAL_Delay(10);
+		// init display, 11 digits 17 segments
+		data = 0b00000111; // command 1, 11 digits 17 segments
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+		HAL_Delay(10);
+
+		for (uint8_t i = 0; i <= 0b111; i++) {
+			data = 0b10000000; // command 4
+			data |= 1 << 3; // enable/disable display
+			data |= i; // set brightness
+			HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+			HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+			HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+			HAL_Delay(250);
+			do_microrl();
+		}
+
+		for (int i = 0; i < 11; i++) {
+			for (int b = 0; b < 3; b++) // erasing from right to left
+					{
+				vfd.arr2[i][b] = 0;
+			}
+			vfd_update();
+			HAL_Delay(150);
+			do_microrl();
+		}
+		HAL_Delay(500);
+		do_microrl();
+
+		//erase everything... just in case
+		clr_vfd();
+
+		// fill everything
+		for (int j = 1; j < 15; j++) {
+			uint32_t temp = 1 << j;
+			for (int i = 1; i < 11; i++) {
+				for (int b = 0; b < 3; b++) {
+					vfd.arr2[i][b] |= (temp >> (b << 3)) & 0xFF;
+				}
+			}
+			vfd_update();
+			HAL_Delay(100);
+			do_microrl();
+		}
+
+		const uint8_t arr[][2] = {
+				{ 6, 0 },
+				{ 0, 0 },
+				{ 0, 1 },
+				{ 0, 4 },
+				{ 0, 3 },
+				{ 0, 5 },
+				{ 0, 2 },
+				{ 0, 6 },
+				{ 1, 16 },
+				{ 1, 15 },
+				{ 2, 16 },
+				{ 2, 15 },
+				{ 3, 16 },
+				{ 3, 15 },
+				{ 4, 16 },
+				{ 4, 15 },
+				{ 5, 16 },
+				{ 5, 15 },
+				{ 6, 16 },
+				{ 6, 15 },
+				{ 8, 16 },
+				{ 8, 15 },
+				{ 9, 16 },
+				{ 10, 16 },
+				{ 10, 15 },
+		};
+
+		for (int j = 0; j < sizeof(arr) / 2; j++) {
+			for (int b = 0; b < 3; b++)
+				vfd.arr2[arr[j][0]][b] |= ((1 << arr[j][1]) >> (b << 3)) & 0xFF;
+			vfd_update();
+			HAL_Delay(70);
+			do_microrl();
+		}
+
+		HAL_Delay(300);
+
+		//erase everything... just in case
+		clr_vfd();
+
+		vfd_update();
+}
+
+void do_brightness(void)
+{
+	uint8_t data;
+	static uint32_t last_time = 0;
+	if (HAL_GPIO_ReadPin(PB2_GPIO_Port, PB2_Pin))
+	{
+		// update only if pause shorter than 2 sec
+		if (HAL_GetTick() - last_time < 2000)
+		{
+		  brightness = (brightness - 1)&0b111;
+		  d3231_set_A2M2(0b111-brightness);
+		}
+		last_time = HAL_GetTick();
+
+	  save_vfd();
+	  clr_vfd();
+	  uint32_t bits = 0;
+	  for (int i = 2; i < 1 + 2 + brightness; i++)
+		  bits |= 1<<i;
+	  symbols_vfd(bits);
+	  str2vfd("brightness");
+	  vfd_update();
+
+	  data = 0b10000000; // command 4
+	  data |= 1<<3; // enable/disable display
+	  data |= brightness&0b111; // set brightness
+	  HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+	  HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+	  HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+	  HAL_Delay(20);
+	  while(HAL_GPIO_ReadPin(PB2_GPIO_Port, PB2_Pin)); // wait release
+	  HAL_Delay(100);
+	  restore_vfd();
+	  vfd_update();
+	}
+}
+
+void do_clock(void)
+{
+	static uint32_t last_time = 0;
+	if (HAL_GetTick() - last_time < 50)
+		return;
+	last_time = HAL_GetTick();
+
+	if (show_clock)
+		  {
+			  uint8_t * time = d3231_get_time();
+			  uint8_t clock [4];
+
+			  static uint8_t old_seconds = 0;
+			  clock[0] = time[1] & 0xF;
+			  clock[1] = (time[1] >> 4) & 0xF;
+			  clock[2] = time[2] & 0xF;
+			  clock[3] = (time[2] >> 4) & 0xF;
+
+			  if (time[0] != old_seconds)
+			  {
+				  old_seconds = time[0];
+
+				  //erase everything...
+				  clr_vfd();
+
+
+				  for (int i = 0; i < 4; i++)
+				  {
+					  uint16_t buf = get_char(clock[i]);
+
+					  vfd.arr2[4+i][0] = buf & 0xFF;
+					  vfd.arr2[4+i][1] = (buf>>8)&0xFF;
+				  }
+
+				  if ((time[0]&0b1) == 0)
+				  {
+						for (int b = 0; b < 3; b++)
+						  vfd.arr2[6][b] |= ((1<<0)>>(b<<3))&0xFF;
+				  }
+
+				  vfd_update();
+			  }
+		  }
+}
+
+void do_leds(void)
+{
+	static uint32_t last_time = 0;
+	static uint8_t tick_counter = 0;
+	if (HAL_GetTick() - last_time < 500)
+		return;
+	last_time = HAL_GetTick();
+	if (use_leds)
+	{
+		HAL_GPIO_TogglePin(LED_GPIO_Port, LED_Pin);
+
+		uint8_t data = 0b01000001; // command 2, write to LED port
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+
+		data = ~(1<<((tick_counter++ >> 1)&0b11));
+
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+	}
+	else
+	{
+		HAL_GPIO_WritePin(LED_GPIO_Port, LED_Pin, 1);
+		uint8_t data = 0b01000001; // command 2, write to LED port
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+
+		data = 0b1111; // disable all leds
+
+		HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+		HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+	}
+
+
+}
+
+void do_temperature(void)
+{
+	uint16_t buf;
+	// show temperature
+	if (HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin))
+	{
+	  //erase everything...
+	  clr_vfd();
+
+	  uint8_t td3231 = *d3231_get_temp();
+	  uint8_t td [6];
+
+	  td[0] = 'C';
+	  td[1] = 176; //°
+	  uint8_t i = 2;
+	  while (td3231)
+	  {
+		  td[i++] = td3231 %10;
+		  td3231 /= 10;
+	  }
+	  if (i>2)
+		  td[i] = td3231&(1<<7)?'-':'+';
+
+	  for (int j = 0; j <= i; j++)
+	  {
+		  buf = get_char(td[j]);
+
+		  vfd.arr2[j+1][0] = buf & 0xFF;
+		  vfd.arr2[j+1][1] = (buf>>8)&0xFF;
+	  }
+
+	  vfd_update();
+	  HAL_Delay(20);
+	  while(HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin)); // wait release
+	  HAL_Delay(1000);
+	  show_clock = true;
+	}
+}
 
 /* USER CODE END 0 */
 
@@ -98,6 +396,24 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   HAL_GPIO_WritePin(USB_PU_GPIO_Port, USB_PU_Pin, 1); // we have initialized USB, pull it up!
+  d3231_init(&hi2c1);
+  init_microrl(); // we are ready for microrl!
+
+  do_vfd_init(); // nice demo
+
+	d3231_get_all();
+
+	brightness = 0b111-d3231_get_A2M2(); // alarm2 minutes as EEPROM, default max
+
+	uint8_t data;
+
+	data = 0b10000000; // command 4
+	data |= 1<<3; // enable/disable display
+	data |= brightness&0b111; // set brightness
+	HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 0);
+	HAL_SPI_Transmit(&hspi2, &data, 1, 0xffffffff);
+	HAL_GPIO_WritePin(PT6315_STB_GPIO_Port, PT6315_STB_Pin, 1);
+
 
   /* USER CODE END 2 */
 
@@ -105,12 +421,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+	  do_microrl();
+	  do_brightness();
+	  do_clock();
+	  do_leds();
+	  do_temperature();
     /* USER CODE END WHILE */
-	  while (!fifo_is_empty())
-	  {
-		  uint8_t buf = fifo_pop();
-		  CDC_Transmit_FS(&buf, 1);
-	  }
 
     /* USER CODE BEGIN 3 */
   }

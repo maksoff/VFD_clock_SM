@@ -75,6 +75,8 @@ void Error_Handler(void);
 #define PT6315_STB_GPIO_Port GPIOB
 /* USER CODE BEGIN Private defines */
 
+#define USE_LEDS (0);
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus
