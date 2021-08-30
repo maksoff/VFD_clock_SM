@@ -88,6 +88,7 @@ int get_td		(int argc, const char * const * argv);
 int get_temp		(int argc, const char * const * argv);
 int leds_toggle		(int argc, const char * const * argv);
 int clock		(int argc, const char * const * argv);
+int get_thp		(int argc, const char * const * argv);
 
 
 extern bool show_clock;

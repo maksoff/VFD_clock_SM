@@ -37,7 +37,8 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ioreq.h \
  ../Middlewares/ST/STM32_USB_Device_Library/Core/Inc/usbd_ctlreq.h \
  ../Core/Inc/microrl_cmd.h ../Core/Inc/microrl.h \
- ../Core/Inc/microrl_config.h ../Core/Inc/vfd.h ../Core/Inc/d3231.h
+ ../Core/Inc/microrl_config.h ../Core/Inc/vfd.h ../Core/Inc/d3231.h \
+ ../Core/Inc/bme280.h ../Core/Inc/bme280_defs.h
 
 ../Core/Inc/main.h:
 
@@ -128,3 +129,7 @@ Core/Src/main.o: ../Core/Src/main.c ../Core/Inc/main.h \
 ../Core/Inc/vfd.h:
 
 ../Core/Inc/d3231.h:
+
+../Core/Inc/bme280.h:
+
+../Core/Inc/bme280_defs.h:

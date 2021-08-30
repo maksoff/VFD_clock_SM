@@ -77,6 +77,17 @@ void Error_Handler(void);
 
 #define USE_LEDS (0);
 
+struct s_bme280_ascii {
+	char temperature[11];
+	char humidity[11];
+	char pressure[11];
+	char all[36];
+};
+
+struct s_bme280_ascii bme280_ascii;
+
+void update_thp(void);
+
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

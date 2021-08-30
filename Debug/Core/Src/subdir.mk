@@ -5,6 +5,7 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../Core/Src/bme280.c \
 ../Core/Src/d3231.c \
 ../Core/Src/fifo.c \
 ../Core/Src/main.c \
@@ -18,6 +19,7 @@ C_SRCS += \
 ../Core/Src/vfd.c 
 
 OBJS += \
+./Core/Src/bme280.o \
 ./Core/Src/d3231.o \
 ./Core/Src/fifo.o \
 ./Core/Src/main.o \
@@ -31,6 +33,7 @@ OBJS += \
 ./Core/Src/vfd.o 
 
 C_DEPS += \
+./Core/Src/bme280.d \
 ./Core/Src/d3231.d \
 ./Core/Src/fifo.d \
 ./Core/Src/main.d \

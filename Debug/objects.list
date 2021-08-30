@@ -1,3 +1,4 @@
+"./Core/Src/bme280.o"
 "./Core/Src/d3231.o"
 "./Core/Src/fifo.o"
 "./Core/Src/main.o"

@@ -28,6 +28,8 @@
 #include "microrl_cmd.h"
 #include "vfd.h"
 #include "d3231.h"
+#include "bme280.h"
+
 
 /* USER CODE END Includes */
 
@@ -67,6 +69,91 @@ static void MX_SPI2_Init(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+struct bme280_dev dev;
+uint8_t dev_addr = BME280_I2C_ADDR_PRIM<<1;
+struct bme280_data comp_data;
+
+
+// seems to be update in last versions, used only for 2ms and 1ms delays
+void user_delay_us(uint32_t period, void *intf_ptr)
+{
+    /*
+     * Return control or wait,
+     * for a period amount of ~milliseconds~ ms
+     */
+	HAL_Delay(period/1000);
+}
+
+int8_t user_i2c_read(uint8_t reg_addr, uint8_t *reg_data, uint32_t len, void *intf_ptr)
+{
+    int8_t rslt = 0; /* Return 0 for Success, non-zero for failure */
+
+    /*
+     * The parameter intf_ptr can be used as a variable to store the I2C address of the device
+     */
+
+    /*
+     * Data on the bus should be like
+     * |------------+---------------------|
+     * | I2C action | Data                |
+     * |------------+---------------------|
+     * | Start      | -                   |
+     * | Write      | (reg_addr)          |
+     * | Stop       | -                   |
+     * | Start      | -                   |
+     * | Read       | (reg_data[0])       |
+     * | Read       | (....)              |
+     * | Read       | (reg_data[len - 1]) |
+     * | Stop       | -                   |
+     * |------------+---------------------|
+     */
+	HAL_I2C_Mem_Read(&hi2c1, dev_addr, reg_addr, 1, reg_data, len, 100);
+
+    return rslt;
+}
+
+int8_t user_i2c_write(uint8_t reg_addr, const uint8_t *reg_data, uint32_t len, void *intf_ptr)
+{
+    int8_t rslt = 0; /* Return 0 for Success, non-zero for failure */
+
+    /*
+     * The parameter intf_ptr can be used as a variable to store the I2C address of the device
+     */
+
+    /*
+     * Data on the bus should be like
+     * |------------+---------------------|
+     * | I2C action | Data                |
+     * |------------+---------------------|
+     * | Start      | -                   |
+     * | Write      | (reg_addr)          |
+     * | Write      | (reg_data[0])       |
+     * | Write      | (....)              |
+     * | Write      | (reg_data[len - 1]) |
+     * | Stop       | -                   |
+     * |------------+---------------------|
+     */
+	HAL_I2C_Mem_Write(&hi2c1, dev_addr, reg_addr, 1, (uint8_t*)reg_data, len, 100);
+
+    return rslt;
+}
+
+
+int8_t init_bme280_i2c(void)
+{
+	int8_t rslt = BME280_OK;
+	dev.intf_ptr = &dev_addr;
+	dev.intf = BME280_I2C_INTF;
+	dev.read = user_i2c_read;
+	dev.write = user_i2c_write;
+	dev.delay_us = user_delay_us;
+
+	rslt = bme280_init(&dev);
+	return rslt;
+}
+
+
 
 void vfd_update(void) {
 	uint8_t data = 0b11000000; // command 3, set address to 0
@@ -405,20 +492,83 @@ void _do_temperature(void)
 	}
 }
 
+void update_thp(void)
+{
+	int8_t rslt;
+	uint8_t settings_sel;
+	uint32_t req_delay;
+
+	dev.settings.osr_h = BME280_OVERSAMPLING_1X;
+	dev.settings.osr_p = BME280_OVERSAMPLING_1X;
+	dev.settings.osr_t = BME280_OVERSAMPLING_1X;
+	dev.settings.filter = BME280_FILTER_COEFF_OFF;
+
+	settings_sel = BME280_OSR_PRESS_SEL | BME280_OSR_TEMP_SEL | BME280_OSR_HUM_SEL | BME280_FILTER_SEL;
+
+	rslt = bme280_set_sensor_settings(settings_sel, &dev);
+
+	/*Calculate the minimum delay required between consecutive measurement based upon the sensor enabled
+	 *  and the oversampling configuration. */
+	req_delay = bme280_cal_meas_delay(&dev.settings);
+
+	rslt = bme280_set_sensor_mode(BME280_FORCED_MODE, &dev);
+	HAL_Delay(req_delay+5); // just in case some longer delay
+	rslt = bme280_get_sensor_data(BME280_ALL, &comp_data, &dev);
+
+	// do some data preparation
+	comp_data.humidity = comp_data.humidity*10/1024;
+	comp_data.temperature = (comp_data.temperature + 5)/10;
+	comp_data.pressure  = (comp_data.pressure + 5)/10;
+
+	snprintf(bme280_ascii.temperature, 11,
+			"%+5d.%d %cC",
+			(int16_t)comp_data.temperature/10,
+			(int16_t)comp_data.temperature%10,
+			176);
+
+	snprintf(bme280_ascii.humidity, 11,
+			"%4d.%d%% RH",
+			(int16_t)comp_data.humidity/10,
+			(int16_t)comp_data.humidity%10);
+
+	snprintf(bme280_ascii.pressure, 11,
+			"%4d.%d hPa",
+			(int16_t)comp_data.pressure/10,
+			(int16_t)comp_data.pressure%10);
+
+	strcpy(bme280_ascii.all, bme280_ascii.temperature);
+	strcat(bme280_ascii.all, "; ");
+	strcat(bme280_ascii.all, bme280_ascii.humidity);
+	strcat(bme280_ascii.all, "; ");
+	strcat(bme280_ascii.all, bme280_ascii.pressure);
+}
+
 void do_measurements(void)
 {
-	_do_temperature();
-	if (HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin))
+	static uint32_t last_time = 0;
+	if (HAL_GetTick() - last_time < 200)
+		return;
+
+	while(HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin)) // wait release
 	{
-		//erase everything...
+		update_thp();
+
 		clr_vfd();
 
+		str2vfd(bme280_ascii.temperature);
 		vfd_update();
-		HAL_Delay(20);
-		while(HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin)); // wait release
-		HAL_Delay(1000);
+		HAL_Delay(2000);
+		str2vfd(bme280_ascii.humidity);
+		vfd_update();
+		HAL_Delay(2000);
+		str2vfd(bme280_ascii.pressure);
+		vfd_update();
+		HAL_Delay(2000);
+
 		show_clock = true;
 	}
+
+	last_time = HAL_GetTick();
 }
 
 /* USER CODE END 0 */
@@ -458,6 +608,8 @@ int main(void)
 	HAL_GPIO_WritePin(USB_PU_GPIO_Port, USB_PU_Pin, 1); // we have initialized USB, pull it up!
 	d3231_init(&hi2c1);
 	init_microrl(); // we are ready for microrl!
+
+	init_bme280_i2c();
 
 	do_vfd_init(); // nice demo
 

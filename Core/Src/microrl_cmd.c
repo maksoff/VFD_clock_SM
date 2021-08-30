@@ -57,6 +57,7 @@ const microrl_action_t microrl_actions [] =
 		{-1,		"clr", 		"", 						NULL},
 		{-1,		"clrscr",	"", 						NULL},
 		{ 0,		"leds",		"toggle LEDs",				leds_toggle},
+		{ 0,		"thp",		"read bme280 data",			get_thp},
 		{ 0,		"temp",		"read d3231 temp",			get_temp},
 		{ 0,		"vfd",		"put text on vfd display",	vfd_text},
 		{-1,		"VFD",		"",							NULL},
@@ -532,5 +533,13 @@ int get_temp		(int argc, const char * const * argv)
 int clock		(int argc, const char * const * argv)
 {
 	show_clock = true;
+	return 0;
+}
+
+int get_thp		(int argc, const char * const * argv)
+{
+	update_thp();
+	print_color(bme280_ascii.all, C_CYAN);
+	print(ENDL);
 	return 0;
 }
