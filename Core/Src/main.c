@@ -298,42 +298,31 @@ void do_text(void)
 		return;
 
 	static int16_t pos = 0;
-	static int8_t dir = 1;
 
 	if (fresh_txt)
 	{
 		fresh_txt = false;
 		pos = 0;
-		dir = 1;
 		t2dlen = strlen(txt2disp);
+		// if text too long add spaces before
+		if (t2dlen > 10)
+		{
+			for (int i = sizeof(txt2disp) - 11; i >= 0; i--)
+				txt2disp[i + 10] = txt2disp[i];
+			for (int i = 0; i < 10; i ++)
+				txt2disp[i] = ' ';
+			t2dlen += 10;
+		}
 	}
 
 	clr_vfd();
 	str2vfd(&txt2disp[pos]);
 	if (t2dlen > 10) // scroll long text
 	{
-		if (dir > 0)
-		{
-			if (pos < t2dlen - 10)
-			{
-				pos += dir;
-			}
-			else
-			{
-				dir = -1;
-			}
-		}
+		if (pos < t2dlen)
+			pos += 1;
 		else
-		{
-			if (pos > 0)
-			{
-				pos += dir;
-			}
-			else
-			{
-				dir = +1;
-			}
-		}
+			pos = 0;
 	}
 	vfd_update();
 }
