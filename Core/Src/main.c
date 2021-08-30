@@ -290,6 +290,7 @@ void do_text(void)
 {
 	static uint32_t last_time = 0;
 	static uint32_t t2dlen = 0;
+	static uint8_t tick = 0;
 	if (HAL_GetTick() - last_time < 300)
 		return;
 	last_time = HAL_GetTick();
@@ -323,6 +324,7 @@ void do_text(void)
 			pos += 1;
 		else
 			pos = 0;
+		symbols_vfd(1<<(19+((tick++)&0b11)));
 	}
 	vfd_update();
 }
