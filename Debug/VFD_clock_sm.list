@@ -7,23 +7,23 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
   1 .text         0000b620  0800010c  0800010c  0001010c  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, CODE
-  2 .rodata       000006ec  0800b72c  0800b72c  0001b72c  2**2
+  2 .rodata       000006f8  0800b72c  0800b72c  0001b72c  2**2
                   CONTENTS, ALLOC, LOAD, READONLY, DATA
-  3 .ARM.extab    00000000  0800be18  0800be18  00020188  2**0
+  3 .ARM.extab    00000000  0800be24  0800be24  00020188  2**0
                   CONTENTS
-  4 .ARM          00000000  0800be18  0800be18  00020188  2**0
+  4 .ARM          00000000  0800be24  0800be24  00020188  2**0
                   CONTENTS
-  5 .preinit_array 00000000  0800be18  0800be18  00020188  2**0
+  5 .preinit_array 00000000  0800be24  0800be24  00020188  2**0
                   CONTENTS, ALLOC, LOAD, DATA
-  6 .init_array   00000004  0800be18  0800be18  0001be18  2**2
+  6 .init_array   00000004  0800be24  0800be24  0001be24  2**2
                   CONTENTS, ALLOC, LOAD, DATA
-  7 .fini_array   00000004  0800be1c  0800be1c  0001be1c  2**2
+  7 .fini_array   00000004  0800be28  0800be28  0001be28  2**2
                   CONTENTS, ALLOC, LOAD, DATA
-  8 .data         00000188  20000000  0800be20  00020000  2**2
+  8 .data         00000188  20000000  0800be2c  00020000  2**2
                   CONTENTS, ALLOC, LOAD, DATA
-  9 .bss          00001590  20000188  0800bfa8  00020188  2**2
+  9 .bss          00001590  20000188  0800bfb4  00020188  2**2
                   ALLOC
- 10 ._user_heap_stack 00000600  20001718  0800bfa8  00021718  2**0
+ 10 ._user_heap_stack 00000600  20001718  0800bfb4  00021718  2**0
                   ALLOC
  11 .ARM.attributes 00000029  00000000  00000000  00020188  2**0
                   CONTENTS, READONLY
@@ -6992,7 +6992,7 @@ uint16_t get_char(char input)
  8002ea2:	3301      	adds	r3, #1
  8002ea4:	60fb      	str	r3, [r7, #12]
  8002ea6:	68fb      	ldr	r3, [r7, #12]
- 8002ea8:	2b15      	cmp	r3, #21
+ 8002ea8:	2b18      	cmp	r3, #24
  8002eaa:	d9ed      	bls.n	8002e88 <get_char+0x38>
 	if ('a' <= input && input <= 'z')
  8002eac:	79fb      	ldrb	r3, [r7, #7]
@@ -7053,7 +7053,7 @@ uint16_t get_char(char input)
  8002f10:	4770      	bx	lr
  8002f12:	bf00      	nop
  8002f14:	0800bd18 	.word	0x0800bd18
- 8002f18:	0800bdcc 	.word	0x0800bdcc
+ 8002f18:	0800bdd4 	.word	0x0800bdd4
  8002f1c:	0800bda0 	.word	0x0800bda0
  8002f20:	0800bd2c 	.word	0x0800bd2c
  8002f24:	0800bd60 	.word	0x0800bd60
@@ -7366,7 +7366,7 @@ void symbols_vfd(uint32_t symbols)
  8003146:	bc80      	pop	{r7}
  8003148:	4770      	bx	lr
  800314a:	bf00      	nop
- 800314c:	0800bde4 	.word	0x0800bde4
+ 800314c:	0800bdf0 	.word	0x0800bdf0
  8003150:	2000062c 	.word	0x2000062c
 
 08003154 <clr_vfd>:
@@ -7562,7 +7562,7 @@ LoopFillZerobss:
   ldr r1, =_edata
  8003240:	20000188 	.word	0x20000188
   ldr r2, =_sidata
- 8003244:	0800be20 	.word	0x0800be20
+ 8003244:	0800be2c 	.word	0x0800be2c
   ldr r2, =_sbss
  8003248:	20000188 	.word	0x20000188
   ldr r4, =_ebss
@@ -28422,10 +28422,10 @@ USBD_StatusTypeDef USBD_Get_USB_Status(HAL_StatusTypeDef hal_status)
  800b66e:	4798      	blx	r3
  800b670:	3601      	adds	r6, #1
  800b672:	e7f2      	b.n	800b65a <__libc_init_array+0x1e>
- 800b674:	0800be18 	.word	0x0800be18
- 800b678:	0800be18 	.word	0x0800be18
- 800b67c:	0800be18 	.word	0x0800be18
- 800b680:	0800be1c 	.word	0x0800be1c
+ 800b674:	0800be24 	.word	0x0800be24
+ 800b678:	0800be24 	.word	0x0800be24
+ 800b67c:	0800be24 	.word	0x0800be24
+ 800b680:	0800be28 	.word	0x0800be28
 
 0800b684 <memcpy>:
  800b684:	440a      	add	r2, r1
