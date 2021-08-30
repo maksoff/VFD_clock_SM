@@ -365,7 +365,8 @@ void do_leds(void)
 
 }
 
-void do_temperature(void)
+// read temperature from d3231 sensor
+void _do_temperature(void)
 {
 	uint16_t buf;
 	// show temperature
@@ -395,6 +396,22 @@ void do_temperature(void)
 			vfd.arr2[j+1][0] = buf & 0xFF;
 			vfd.arr2[j+1][1] = (buf>>8)&0xFF;
 		}
+
+		vfd_update();
+		HAL_Delay(20);
+		while(HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin)); // wait release
+		HAL_Delay(1000);
+		show_clock = true;
+	}
+}
+
+void do_measurements(void)
+{
+	_do_temperature();
+	if (HAL_GPIO_ReadPin(PB1_GPIO_Port, PB1_Pin))
+	{
+		//erase everything...
+		clr_vfd();
 
 		vfd_update();
 		HAL_Delay(20);
@@ -469,7 +486,7 @@ int main(void)
 		do_clock();
 		do_text();
 		do_leds();
-		do_temperature();
+		do_measurements();
 		/* USER CODE END WHILE */
 
 		/* USER CODE BEGIN 3 */
