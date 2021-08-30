@@ -286,6 +286,21 @@ void do_clock(void)
 	}
 }
 
+void do_text(void)
+{
+	static uint32_t last_time = 0;
+	if (HAL_GetTick() - last_time < 100)
+		return;
+	last_time = HAL_GetTick();
+
+	if (show_clock)
+		return;
+
+	clr_vfd();
+	str2vfd(txt2disp);
+	vfd_update();
+}
+
 void do_leds(void)
 {
 	static uint32_t last_time = 0;
@@ -424,6 +439,7 @@ int main(void)
 		do_microrl();
 		do_brightness();
 		do_clock();
+		do_text();
 		do_leds();
 		do_temperature();
 		/* USER CODE END WHILE */
