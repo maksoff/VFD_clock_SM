@@ -289,15 +289,52 @@ void do_clock(void)
 void do_text(void)
 {
 	static uint32_t last_time = 0;
-	if (HAL_GetTick() - last_time < 100)
+	static uint32_t t2dlen = 0;
+	if (HAL_GetTick() - last_time < 300)
 		return;
 	last_time = HAL_GetTick();
 
 	if (show_clock)
 		return;
 
+	static int16_t pos = 0;
+	static int8_t dir = 1;
+
+	if (fresh_txt)
+	{
+		fresh_txt = false;
+		pos = 0;
+		dir = 1;
+		t2dlen = strlen(txt2disp);
+	}
+
 	clr_vfd();
-	str2vfd(txt2disp);
+	str2vfd(&txt2disp[pos]);
+	if (t2dlen > 10) // scroll long text
+	{
+		if (dir > 0)
+		{
+			if (pos < t2dlen - 10)
+			{
+				pos += dir;
+			}
+			else
+			{
+				dir = -1;
+			}
+		}
+		else
+		{
+			if (pos > 0)
+			{
+				pos += dir;
+			}
+			else
+			{
+				dir = +1;
+			}
+		}
+	}
 	vfd_update();
 }
 
