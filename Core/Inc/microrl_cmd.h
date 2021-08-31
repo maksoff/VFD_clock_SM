@@ -10,7 +10,7 @@
 
 #include "microrl.h"
 
-#define _VER "VFD Driver v1.0"
+#define _VER "VFD Clock v2.0"
 
 //extern microrl_t * p_mcrl;
 
